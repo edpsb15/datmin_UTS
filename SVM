@@ -1,0 +1,85 @@
+### Load Library
+## Library **tidyverse** akan digunakan untuk plotting dan mengolah variabel. Library **e1071** digunakan untuk melakukan pemodelan SVM.  Library **caret** digunakan untuk membuat confusion matriks dan melihar akurasi model.
+
+library(tidyverse)
+library(e1071)
+library(caret)
+
+### Load Data
+library(haven)
+data <- read_sav("F:/MATERI/Semester V/DMKM/UTS/data.sav")
+str(data)
+sum(is.na(data))
+
+### Scatter Plot
+## Scatterplot untuk  melihat hubungan antar variabel dari data kebahagiaan.
+
+cor(data)
+pairs(data)
+data$D <- as.factor(data$D)
+str(data)
+
+### Split Data
+
+set.seed(1234)
+sampel<-sample(2,nrow(data),replace = T, prob = c(0.8,0.2))
+trainingdat<-data[sampel==1, ]
+testingdat<-data[sampel==2, ]
+print(paste("Jumlah Train Data: ", nrow(trainingdat), "| Jumlah Test Data: ", nrow(testingdat)))
+
+### Buat Model
+
+modelSVM <- svm(D~., data=trainingdat)
+summary(modelSVM)
+
+## Support vector kernel default adalah bertipe radial. Terdapat beberapa pilihan yaitu sigmoid, polynomial, dan linear.
+
+### SVM Classification Plot
+## Karena terdapat lebih dari 3 variabel pada dataset ini, perlu didefinisikan variabel mana yang akan ditampilkan, pada kasus ini adalah X1, X2, X3, X4, X5, dan X6.
+
+plot(modelSVM, data=trainingdat,
+     X1~X2,
+     slice= list(X3 = 3,
+                 X4 = 3, X5= 3, X6 = 3))
+plot(modelSVM, data=trainingdat,
+     X1~X3,
+     slice= list(X2 = 3,
+                 X4 = 3, X5= 3, X6 = 3))
+plot(modelSVM, data=trainingdat,
+     X1~X4,
+     slice= list(X2 = 3,
+                 X3 = 3, X5= 3, X6 = 3))
+plot(modelSVM, data=trainingdat,
+     X1~X5,
+     slice= list(X2 = 3,
+                 X3 = 3, X4= 3, X6 = 3))
+plot(modelSVM, data=trainingdat,
+     X1~X6,
+     slice= list(X2 = 3,
+                 X3 = 3, X4= 3, X5 = 3))
+
+### Confusion Matrix
+pred <- predict(modelSVM, trainingdat)
+confusionMatrix(table(Predicted = pred, Actual=trainingdat$D))
+
+
+### Mencari Model Terbaik
+set.seed(123)
+bsvm <- tune(svm, D~., data=trainingdat,
+                     ranges = list(epsilon = seq(0,1,0.1),
+                     cost = 2^(2:9)))
+bsvm
+
+#### Performance of SVM Plot
+plot(bsvm)
+
+### Summary
+summary(bsvm)
+
+## Didapat model terbaik adalah model dengan epsilon 0 dan cost 4.
+bestmodel <- bsvm$best.model
+summary(bestmodel)
+
+### Confusion Matrix Best Model
+pred <- predict(bestmodel, data)
+confusionMatrix(table(Predicted = pred, Actual=data$D))
